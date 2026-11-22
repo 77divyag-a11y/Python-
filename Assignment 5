@@ -1,0 +1,194 @@
+                                                
+POSITIVE = {"good", "clean", "fast", "helpful", "improved"}
+NEGATIVE = {"bad", "dirty", "slow", "rude", "smoke", "broken"}
+NEGATORS = {"not", "never", "no"}
+
+def score(text):
+    words = text.lower().replace(",", "").replace(".", "").split()
+    total = 0
+    previous_negator = False
+
+    for word in words:
+        if word in NEGATORS:
+            previous_negator = True
+            continue
+
+        value = 0
+
+        if word in POSITIVE:
+            value = 1
+        elif word in NEGATIVE:
+            value = -1
+
+        if previous_negator:
+            value = -value
+            previous_negator = False
+
+        total += value
+
+    return total
+
+
+def label(text):
+    s = score(text)
+
+    if s > 0:
+        return "positive"
+    elif s < 0:
+        return "negative"
+    else:
+        return "neutral"
+
+
+# Test the four complaints given in the question
+
+complaints = [
+    "Roads are clean and the bus was fast.",
+    "Smoke from the factory, air is bad.",
+    "The staff were not helpful.",
+    "Not bad, service improved."
+]
+
+print("SENTIMENT ANALYSIS")
+print("------------------")
+
+for c in complaints:
+    print(f"{label(c):8} | {c}")
+
+
+# Find a wrongly classified complaint
+
+wrong_complaint = "The road is not bad, but the smoke is dirty."
+
+print("\nWRONG CLASSIFICATION TEST")
+print("-------------------------")
+print("Complaint:", wrong_complaint)
+print("Predicted:", label(wrong_complaint))
+
+print("\nExplanation:")
+print("The program uses a simple word list.")
+print("It cannot fully understand context, sarcasm")
+print("or mixed opinions in a complaint.")
+
+
+# First-K sentence summariser
+
+def first_k_summary(text, k=1):
+    import re
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    return " ".join(sentences[:k])
+
+
+# Important-word frequency summariser
+
+def important_summary(text, k=1):
+    import re
+    from collections import Counter
+
+    stop_words = {
+        "the", "is", "a", "an", "and", "was",
+        "were", "to", "of", "in", "on", "for",
+        "but", "with", "it", "near"
+    }
+
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+
+    words = [
+        word.lower()
+        for word in re.findall(r'\b\w+\b', text)
+        if word.lower() not in stop_words
+    ]
+
+    frequency = Counter(words)
+
+    ranked = []
+
+    for i, sentence in enumerate(sentences):
+        sentence_words = [
+            word.lower()
+            for word in re.findall(r'\b\w+\b', sentence)
+            if word.lower() not in stop_words
+        ]
+
+        importance = sum(
+            frequency[word] for word in sentence_words
+        )
+
+        ranked.append((importance, i, sentence))
+
+    selected = sorted(
+        ranked, key=lambda x: x[0], reverse=True
+    )[:k]
+
+    selected.sort(key=lambda x: x[1])
+
+    return " ".join(item[2] for item in selected)
+
+
+# Compare summarisation methods on 50 complaints
+
+print("\n50 COMPLAINT SUMMARY COMPARISON")
+print("--------------------------------")
+
+print("Enter 50 complaints, each containing multiple sentences.")
+
+first_total = 0
+important_total = 0
+
+for i in range(50):
+    print("\nComplaint", i + 1)
+    text = input("Enter complaint: ")
+
+    first = first_k_summary(text, 1)
+    important = important_summary(text, 1)
+
+    print("First sentence summary:", first)
+    print("Important word summary:", important)
+
+    first_total += len(first.split())
+    important_total += len(important.split())
+
+print("\nSUMMARY COMPARISON RESULTS")
+print("--------------------------")
+print("Average words in first-sentence summaries:",
+      first_total / 50)
+
+print("Average words in important-word summaries:",
+      important_total / 50)
+
+print("\nFirst-K method selects the beginning sentence.")
+print("Important-word method selects the most relevant")
+print("sentence using word frequency.")
+
+
+# Agreement measurement using 50 complaints
+
+print("\nSENTIMENT AGREEMENT TEST")
+print("------------------------")
+
+correct = 0
+
+print("Enter the actual human label for each complaint.")
+print("Use positive, negative or neutral.")
+
+for i in range(50):
+    text = input("\nComplaint: ")
+    actual = input("Human label: ").lower().strip()
+
+    predicted = label(text)
+
+    print("Predicted label:", predicted)
+
+    if predicted == actual:
+        correct += 1
+
+agreement = (correct / 50) * 100
+
+print("\nAGREEMENT RESULTS")
+print("-----------------")
+print("Correct classifications:", correct)
+print("Total complaints:", 50)
+print("Agreement percentage:", agreement, "%")
+
+
+ 
