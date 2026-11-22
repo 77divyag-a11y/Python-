@@ -1,0 +1,149 @@
+#Counting Ways to Climb Temple Steps – Recursion and Its Limits.
+import time
+import sys
+from functools import lru_cache
+
+# Count function calls
+calls = 0
+
+
+# 1. ORIGINAL METHOD: PLAIN RECURSION
+
+def ways_naive(n):
+    global calls
+    calls += 1
+
+    if n <= 1:
+        return 1
+
+    return ways_naive(n - 1) + ways_naive(n - 2)
+
+
+# 2. IMPROVED METHOD: MEMOISATION
+
+calls = 0
+
+@lru_cache(maxsize=None)
+def ways_memo(n):
+    global calls
+    calls += 1
+
+    if n <= 1:
+        return 1
+
+    return ways_memo(n - 1) + ways_memo(n - 2)
+
+
+# 3. REDESIGNED METHOD: ITERATION
+
+def ways_loop(n):
+    if n <= 1:
+        return 1
+
+    previous = 1
+    current = 1
+
+    for i in range(2, n + 1):
+        next_value = previous + current
+        previous = current
+        current = next_value
+
+    return current
+
+
+# 4. CORRECTNESS CHECK: n = 1 TO 6
+
+print("CORRECTNESS CHECK")
+print("-----------------")
+
+for n in range(1, 7):
+    ways_memo.cache_clear()
+    result = ways_memo(n)
+    print("Steps:", n, "Ways:", result)
+
+
+# 5. FUNCTION CALL AND TIME COMPARISON
+
+print("\nFUNCTION CALL AND TIME COMPARISON")
+print("---------------------------------")
+
+for n in [10, 20, 25, 30]:
+
+    # Plain recursion
+    calls = 0
+    start = time.perf_counter()
+    answer1 = ways_naive(n)
+    naive_time = time.perf_counter() - start
+    naive_calls = calls
+
+    # Memoisation
+    calls = 0
+    ways_memo.cache_clear()
+
+    start = time.perf_counter()
+    answer2 = ways_memo(n)
+    memo_time = time.perf_counter() - start
+    memo_calls = calls
+
+    # Iterative method
+    start = time.perf_counter()
+    answer3 = ways_loop(n)
+    loop_time = time.perf_counter() - start
+
+    print("\nNumber of steps:", n)
+    print("Answer:", answer1)
+    print("Naive calls:", naive_calls)
+    print("Memo calls:", memo_calls)
+    print("Iterative answer:", answer3)
+
+    print("Naive time:", round(naive_time, 6), "seconds")
+    print("Memo time:", round(memo_time, 6), "seconds")
+    print("Loop time:", round(loop_time, 6), "seconds")
+
+
+# 6. TEST RECURSION LIMIT FOR 1000 STEPS
+
+print("\nRECURSION LIMIT TEST")
+print("--------------------")
+
+print("Current recursion limit:",
+      sys.getrecursionlimit())
+
+# Test plain recursion
+calls = 0
+
+try:
+    ways_naive(1000)
+except RecursionError:
+    print("Plain recursion: RecursionError occurred.")
+    print("Function calls before error:", calls)
+
+# Test memoisation
+calls = 0
+ways_memo.cache_clear()
+
+try:
+    ways_memo(1000)
+    print("Memoisation: Completed successfully.")
+except RecursionError:
+    print("Memoisation: RecursionError occurred.")
+    print("Function calls before error:", calls)
+
+
+# 7. FINAL ITERATIVE TEST FOR 1000 STEPS
+
+print("\nFINAL ITERATIVE TEST")
+print("--------------------")
+
+start = time.perf_counter()
+final_result = ways_loop(1000)
+loop_time = time.perf_counter() - start
+
+print("Number of steps: 1000")
+print("Number of ways:", final_result)
+print("Number of digits:", len(str(final_result)))
+print("Execution time:", round(loop_time, 6), "seconds")
+print("Iterative solution completed successfully.")
+
+
+ 
