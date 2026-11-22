@@ -1,0 +1,371 @@
+              # COLLEGE FEST REGISTRATION SYSTEM
+import os
+
+# ==========================================
+# COLLEGE FEST REGISTRATION DESK
+# ==========================================
+
+DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL"]
+
+INPUT_FOLDER = "input"
+OUTPUT_FOLDER = "output"
+
+# Counters
+total_records = 0
+accepted = 0
+duplicates = 0
+invalid = 0
+missing_files = 0
+
+# Store valid registrations
+master_list = []
+
+# Set for detecting duplicate register numbers
+seen = set()
+
+# Dictionary for event-wise participants
+event_data = {}
+
+# Error messages
+error_log = []
+
+
+# ==========================================
+# 1. EMAIL VALIDATION
+# ==========================================
+
+def validate_email(email):
+
+    if " " in email:
+        return False
+
+    if email.count("@") != 1:
+        return False
+
+    username, domain = email.split("@")
+
+    if username == "" or domain == "":
+        return False
+
+    if "." not in domain:
+        return False
+
+    if domain.startswith(".") or domain.endswith("."):
+        return False
+
+    return True
+
+
+# ==========================================
+# 2. RECORD VALIDATION
+# ==========================================
+
+def validate_record(fields):
+
+    if len(fields) != 5:
+        return False
+
+    reg_no, name, department, email, events = fields
+
+    if not reg_no or not name or not department:
+        return False
+
+    if not validate_email(email):
+        return False
+
+    if not events.strip():
+        return False
+
+    if not all(part.strip() for part in events.split(";")):
+        return False
+
+    return True
+
+
+# ==========================================
+# 3. PROCESS REGISTRATION RECORDS
+# ==========================================
+
+def process_record(line, department, filename, line_number):
+
+    global accepted, duplicates, invalid
+
+    fields = line.strip().split("|")
+
+    # Validate record
+    if not validate_record(fields):
+
+        invalid += 1
+
+        error_log.append(
+            f"{filename} - Line {line_number}: Invalid record"
+        )
+
+        return
+
+    reg_no, name, dept, email, events = fields
+
+    # Check department
+    if dept.upper() != department.upper():
+
+        invalid += 1
+
+        error_log.append(
+            f"{filename} - Line {line_number}: Department mismatch"
+        )
+
+        return
+
+    # Check duplicate registration number
+    if reg_no in seen:
+
+        duplicates += 1
+
+        error_log.append(
+            f"{filename} - Line {line_number}: Duplicate registration {reg_no}"
+        )
+
+        return
+
+    # Add registration number to set
+    seen.add(reg_no)
+
+    # Convert events into a list
+    event_list = [
+        event.strip()
+        for event in events.split(";")
+    ]
+
+    # Create student record
+    student = {
+        "reg_no": reg_no,
+        "name": name,
+        "department": dept,
+        "email": email,
+        "events": event_list
+    }
+
+    master_list.append(student)
+
+    accepted += 1
+
+    # Store participants event-wise
+    for event in event_list:
+
+        key = event.casefold()
+
+        if key not in event_data:
+            event_data[key] = {
+                "name": event,
+                "participants": []
+            }
+
+        event_data[key]["participants"].append(student)
+
+
+# ==========================================
+# 4. READ DEPARTMENT FILES
+# ==========================================
+
+def read_department_files():
+
+    global total_records, missing_files
+
+    for department in DEPARTMENTS:
+
+        filename = os.path.join(
+            INPUT_FOLDER, department + ".txt"
+        )
+
+        print("\nProcessing:", department)
+
+        try:
+
+            with open(filename, "r", encoding="utf-8") as file:
+
+                lines = file.readlines()
+
+                for line_number, line in enumerate(lines, start=1):
+
+                    total_records += 1
+
+                    process_record(
+                        line,
+                        department,
+                        department + ".txt",
+                        line_number
+                    )
+
+        except FileNotFoundError:
+
+            missing_files += 1
+
+            error_log.append(
+                f"Missing department file: {department}.txt"
+            )
+
+            print("File not found. Skipping this department.")
+
+        except OSError as error:
+
+            missing_files += 1
+
+            error_log.append(
+                f"Could not read {department}.txt: {error}"
+            )
+
+            print("Unable to read file. Skipping this department.")
+
+
+# ==========================================
+# 5. WRITE MASTER LIST
+# ==========================================
+
+def write_master_list():
+
+    filename = os.path.join(
+        OUTPUT_FOLDER, "master_list.txt"
+    )
+
+    with open(filename, "w", encoding="utf-8") as file:
+
+        file.write(
+            "Register Number|Name|Department|Email|Events\n"
+        )
+
+        for student in master_list:
+
+            events = ";".join(student["events"])
+
+            file.write(
+                f'{student["reg_no"]}|'
+                f'{student["name"]}|'
+                f'{student["department"]}|'
+                f'{student["email"]}|'
+                f'{events}\n'
+            )
+
+
+# ==========================================
+# 6. WRITE EVENT-WISE PARTICIPANT FILES
+# ==========================================
+
+def write_event_files():
+
+    for key, data in event_data.items():
+
+        event = data["name"]
+
+        safe_name = "".join(
+            ch for ch in event
+            if ch.isalnum() or ch in ("_", "-")
+        )
+
+        filename = os.path.join(
+            OUTPUT_FOLDER, safe_name + ".txt"
+        )
+
+        with open(filename, "w", encoding="utf-8") as file:
+
+            file.write(
+                "Register Number|Name|Department|Email\n"
+            )
+
+            for student in data["participants"]:
+
+                file.write(
+                    f'{student["reg_no"]}|'
+                    f'{student["name"]}|'
+                    f'{student["department"]}|'
+                    f'{student["email"]}\n'
+                )
+
+
+# ==========================================
+# 7. GENERATE SUMMARY REPORT
+# ==========================================
+
+def generate_report():
+
+    filename = os.path.join(
+        OUTPUT_FOLDER, "summary_report.txt"
+    )
+
+    with open(filename, "w", encoding="utf-8") as file:
+
+        file.write("COLLEGE FEST REGISTRATION REPORT\n")
+        file.write("--------------------------------\n")
+
+        file.write(f"Total records: {total_records}\n")
+        file.write(f"Accepted registrations: {accepted}\n")
+        file.write(f"Duplicate registrations: {duplicates}\n")
+        file.write(f"Invalid registrations: {invalid}\n")
+        file.write(f"Missing department files: {missing_files}\n")
+
+
+# ==========================================
+# 8. GENERATE ERROR LOG
+# ==========================================
+
+def generate_error_log():
+
+    filename = os.path.join(
+        OUTPUT_FOLDER, "error_log.txt"
+    )
+
+    with open(filename, "w", encoding="utf-8") as file:
+
+        if not error_log:
+            file.write("No errors found.\n")
+
+        else:
+
+            for error in error_log:
+                file.write(error + "\n")
+
+
+# ==========================================
+# 9. MAIN PROGRAM
+# ==========================================
+
+def main():
+
+    os.makedirs(INPUT_FOLDER, exist_ok=True)
+    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+    print("COLLEGE FEST REGISTRATION SYSTEM")
+    print("--------------------------------")
+
+    # Read and process all department files
+    read_department_files()
+
+    # Generate output files
+    write_master_list()
+    write_event_files()
+    generate_report()
+    generate_error_log()
+
+    # Display final summary
+    print("\nPROCESSING COMPLETED")
+    print("--------------------")
+
+    print("Total records:", total_records)
+    print("Accepted registrations:", accepted)
+    print("Duplicate registrations:", duplicates)
+    print("Invalid registrations:", invalid)
+    print("Missing department files:", missing_files)
+
+    print("\nMaster list created successfully.")
+    print("Event-wise files created successfully.")
+    print("Summary report created successfully.")
+    print("Error log created successfully.")
+
+    print("\nCheck the output folder for all files.")
+
+
+# Execute main function
+if __name__ == "__main__":
+    main()
+
+
+ 
