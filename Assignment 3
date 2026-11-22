@@ -1,0 +1,129 @@
+#Contact List Merging and Duplicate Contact Detection Using Python
+import re
+from time import perf_counter
+
+
+# Normalize phone numbers
+def normalise_phone(phone):
+    digits = re.sub(r"\D", "", phone or "")
+
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+
+    return digits
+
+
+# Normalize contact names
+def normalise_name(name):
+    return " ".join((name or "").lower().split())
+
+
+# Merge contact lists
+def merge_contacts(contact_lists):
+    merged = {}
+    unmatched = []
+
+    for source in contact_lists:
+        for contact in source:
+            raw_phone = contact.get("phone", "")
+            key = normalise_phone(raw_phone)
+
+            name = contact.get("name", "").strip()
+            email = contact.get("email", "").strip().lower()
+
+            if not key:
+                unmatched.append({
+                    "name": name,
+                    "phone": raw_phone,
+                    "email": email
+                })
+                continue
+
+            if key not in merged:
+                merged[key] = {
+                    "name_variants": set(),
+                    "phones": set(),
+                    "emails": set()
+                }
+
+            if name:
+                merged[key]["name_variants"].add(name)
+
+            if raw_phone:
+                merged[key]["phones"].add(raw_phone)
+
+            if email:
+                merged[key]["emails"].add(email)
+
+    # Prepare final merged results
+    result = []
+
+    for key, item in sorted(merged.items()):
+        names = sorted(item["name_variants"])
+
+        result.append({
+            "normalised_phone": key,
+            "display_name": names[0] if names else "Unknown",
+            "name_variants": names,
+            "phone_numbers": sorted(item["phones"]),
+            "emails": sorted(item["emails"])
+        })
+
+    return result, unmatched
+
+
+# Contact list A
+phone_a = [
+    {
+        "name": "Dr. Ravi",
+        "phone": "+91 98400 12345",
+        "email": "ravi@example.com"
+    },
+    {
+        "name": "Meena",
+        "phone": "9000011111",
+        "email": "meena@example.com"
+    }
+]
+
+
+# Contact list B
+phone_b = [
+    {
+        "name": "ravi kumar",
+        "phone": "9840012345",
+        "email": "RAVI@example.com"
+    },
+    {
+        "name": "Meena",
+        "phone": "90000-11111",
+        "email": ""
+    }
+]
+
+
+# SIM contact list
+sim = [
+    {
+        "name": "Ravi",
+        "phone": "09840012345",
+        "email": "r.k@example.com"
+    },
+    {
+        "name": "No Number",
+        "phone": "",
+        "email": "none@example.com"
+    }
+]
+
+
+# Merge all contact lists
+merged, unmatched = merge_contacts([phone_a, phone_b, sim])
+
+
+# Display results
+for contact in merged:
+    print(contact)
+
+print("Unmatched:", unmatched)  
+
